@@ -1,15 +1,22 @@
+#The weighted centroid of the city is calculated by considering the geographic location of each individual within the city's districts. This means that the centroid is not simply the geographic center of the city's boundaries, but rather a point that takes into account the distribution of residents across different districts, with each resident's location contributing proportionally to their respective district's population density.
+
 #Loading the total population living in each postal code area.
 #It is more specific than using the district or neighborhood in determining the population-adjusted-centroid of Berlin.
 
 pacman::p_load(ggplot2, dplyr, tibble,
-               readxl, conflicted
+               readxl, conflicted, sf
 )
 
 conflicts_prefer(dplyr::filter)
 
 #Importing the excel file
-rawdata <- read_excel("~/Desktop/R/berlincentroidpop/popberlin.xlsx",         sheet = "T14")|>
+rawdata <- read_excel("~/Desktop/R/Berlin-map-and-demographic/Berlindemographics.xlsx", sheet = "T14")|>
         as_tibble()
+
+orts_sh <- st_read("~/Desktop/R/Berlin-map-and-demographic/Postalshapes/plz.shp") |> st_make_valid()
+
+posten_sh <- st_read("~/Desktop/R/Berlin-map-and-demographic/Postalshapes/plz.shp") |> st_make_valid()
+
 
 #Assigning the right column name
 for (i in 1:ncol(rawdata)) {
@@ -69,7 +76,7 @@ joined_without_bezirk<- rawdata |>
   group_by(Postleitzahl) |>
   summarize(across(where(is.numeric), sum))
 
-#I add back the bezirk column
+#I add back the Bezirk column
 bezirk <- rawdata |>
   group_by(Postleitzahl) |>
   arrange(desc(Total)) |> 
@@ -83,82 +90,74 @@ data <- bind_cols(bezirk, joined_without_bezirk)
 #Now we should be done with pre-processing
 #//////////////////////////////////
 #//////////////////////////////////
+create_centroid <- function (shapefile){
+  
+  centroids <- st_centroid(shapefile)
+  # Extract X and Y coordinates of centroids
+  centroid_coords <- st_coordinates(centroids)
+  
+  # Sum X and Y coordinates
+  total_x <- sum(centroid_coords[, "X"])
+  total_y <- sum(centroid_coords[, "Y"])
+  
+  # Calculate the average X and Y coordinates
+  num_centroids <- nrow(centroid_coords)
+  average_x <- total_x / num_centroids
+  average_y <- total_y / num_centroids
+  
+  #Convoluted way but I have struggled with CRS problems
+  # First I have to create a data frame with the average centroid coordinates
+  average_centroid_df <- data.frame(x = average_x, y = average_y)
+  
+  # Then I convert the data frame to an sf object
+  average_centroid_sf <- st_as_sf(average_centroid_df, coords = c("x", "y"))
+  
+  # Now I assign the missing CRS to match the CRS of shapefile
+  st_crs(average_centroid_sf) <- st_crs(shapefile)
+  
+  return(average_centroid_sf)}
 
-centroids <- st_centroid(posten_sh)
-
-# Extract X and Y coordinates of centroids
-centroid_coords <- st_coordinates(centroids)
-
-# Sum X and Y coordinates
-total_x <- sum(centroid_coords[, "X"])
-total_y <- sum(centroid_coords[, "Y"])
-
-# Calculate the average X and Y coordinates
-num_centroids <- nrow(centroid_coords)
-average_x <- total_x / num_centroids
-average_y <- total_y / num_centroids
-
-#Convoluted way but I have struggled with CRS problems
-
-# First I have to create a data frame with the average centroid coordinates
-average_centroid_df <- data.frame(x = average_x, y = average_y)
-
-# Then I convert the data frame to an sf object
-average_centroid_sf <- st_as_sf(average_centroid_df, coords = c("x", "y"))
-
-# Now I assign the missing CRS to match the CRS of posten_sh
-st_crs(average_centroid_sf) <- st_crs(posten_sh)
-
-#And finally I can plot it!
+#Plot of the centroid of Berlin, in other words: the point that on average is closest from each other point of the city
 ggplot() + 
   geom_sf(data = posten_sh, size = 1.5, color = "black", fill = "cyan1") +
-  geom_sf(data = average_centroid_sf, color = "red", size = 3) +
-  ggtitle("Berlin Neighbors Outline with Centroids") + 
+  geom_sf(data = create_centroid(posten_sh), color = "red", size = 3) +
+  ggtitle("Berlin Neighborhood Outline with Centroid") + 
   coord_sf()
 
 
+centroids<- st_centroid(posten_sh)
+
 #Let's compute the population-weighted centroid
+#Join the column with the centroid for each postal code with the tibble containing the count of people on each postal code
 mergedata<- merge(centroids, data,
                   by.x = "plz",
                   by.y = "Postleitzahl", all = FALSE)
-#idea1 creating a very big tibble with all 3.8 millions rows, one for every person living in Berlin.
-bigdata<- mergedata |>
+
+#We create a very big tibble with all 3.8 millions rows, one for every person living in Berlin. Each row containing the postal code centroid will be repeated for the total amount of people living in that postal code area. Afterwards we will calculate in the same way the centroid this time averaged considering the 3.8 million people living in Berlin.
+bigdata_sh<- mergedata |>
   slice(rep(row_number(), mergedata$Total)) |>
   select(geometry)|>
   ungroup()
 
-
-centroid_coords <- st_coordinates(bigdata)
-
-# Sum X and Y coordinates
-total_x <- sum(centroid_coords[, "X"])
-total_y <- sum(centroid_coords[, "Y"])
-
-# Calculate the average X and Y coordinates
-num_centroids <- nrow(centroid_coords)
-average_x <- total_x / num_centroids
-average_y <- total_y / num_centroids
-
-
-average_centroid_df <- data.frame(x = average_x, y = average_y)
-
-# Then I convert the data frame to an sf object
-average_centroid_sf <- st_as_sf(average_centroid_df, coords = c("x", "y"))
-
-# Now I assign the missing CRS to match the CRS of posten_sh
-st_crs(average_centroid_sf) <- st_crs(posten_sh)
-
-#And finally I can plot it!
+#Plot of the centroid of Berlin considering also the people living in each neighborhood
 ggplot() + 
   geom_sf(data = posten_sh, size = 1.5, color = "black", fill = "cyan1") +
-  geom_sf(data = average_centroid_sf, color = "red", size = 3) +
-  ggtitle("Berlin Neighbors Outline with Centroids Weighted by Population") + 
+  geom_sf(data = create_centroid(bigdata), color = "red", size = 3) +
+  ggtitle("Berlin Neighborhood Outline with Centroid Weighted by Population") + 
   coord_sf()
 
 
+extract_coordinates <- function(centroid){
+  centroid_wgs84 <- st_transform(centroid, crs = st_crs("+proj=longlat +datum=WGS84"))
+  # Extract the coordinates of the centroid in WGS84
+  centroid_coords_wgs84 <- st_coordinates(centroid_wgs84)
+  centroid_coords_wgs84 <- centroid_coords_wgs84[, c("Y", "X")]
+  return(centroid_coords_wgs84)}
 
-
-
+coor_centroid<-extract_coordinates(create_centroid(posten_sh))
+coor_avg_pop_centroid<-extract_coordinates(create_centroid(bigdata_sh))
+coor_centroid
+coor_avg_pop_centroid
 
 
 
