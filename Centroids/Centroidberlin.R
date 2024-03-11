@@ -1,5 +1,3 @@
-#The weighted centroid of the city is calculated by considering the geographic location of each individual within the city's districts. This means that the centroid is not simply the geographic center of the city's boundaries, but rather a point that takes into account the distribution of residents across different districts, with each resident's location contributing proportionally to their respective district's population density.
-
 #Loading the total population living in each postal code area.
 #It is more specific than using the district or neighborhood in determining the population-adjusted-centroid of Berlin.
 
@@ -13,9 +11,9 @@ conflicts_prefer(dplyr::filter)
 rawdata <- read_excel("~/Desktop/R/Berlin-map-and-demographic/Berlindemographics.xlsx", sheet = "T14")|>
         as_tibble()
 
-orts_sh <- st_read("~/Desktop/R/Berlin-map-and-demographic/Postalshapes/plz.shp") |> st_make_valid()
+orts_sh <- st_read("~/Desktop/R/Berlin-map-and-demographic/Ortsteilen_shapes/plz.shp") |> st_make_valid()
 
-posten_sh <- st_read("~/Desktop/R/Berlin-map-and-demographic/Postalshapes/plz.shp") |> st_make_valid()
+posten_sh <- st_read("~/Desktop/R/Berlin-map-and-demographic/Postal_shapes/plz.shp") |> st_make_valid()
 
 
 #Assigning the right column name
