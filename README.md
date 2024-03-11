@@ -1,1 +1,2 @@
-# Berlin map and demographics
+# Berlin map and demographics and centroid
+The weighted centroid of the city is calculated by considering the geographic location of each individual within the city's districts. This means that the centroid is not simply the geographic center of the city's boundaries, but rather a point that takes into account the distribution of residents across different districts, with each resident's location contributing proportionally to their respective district's population density
