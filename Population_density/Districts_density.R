@@ -116,7 +116,7 @@ longausper <- longausper |>
   left_join(districts_sh, by = c('District' = 'Gemeinde_n'))
 
 #Saving the file for the data visualization
-saveRDS(longausper, file = "~/Desktop/R/Berlin-map-and-demographic/Population_density/longausper.rds")
+saveRDS(longausper, file = "~/Desktop/R/Berlin-map-and-demographic/Population_density/big_files/longausper.rds")
 
 
 
