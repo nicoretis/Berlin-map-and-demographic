@@ -6,13 +6,14 @@ pacman::p_load(ggplot2, dplyr, tibble,
 
 
 
-rawdata <- readRDS("~/Desktop/R/Berlin-map-and-demographic/Population_density/big_files/longausper.rds")
-
 #Finally we have 10 year, and 48 frames for single year for a total of 480 frames for the final video.
 #The following loop will create a new tibble out of every row and will save the plot in my folder.
 
+#Foreign
+foreign <- readRDS("~/Desktop/R/Berlin-map-and-demographic/Population_density/big_files/foreign.rds")
+
 for (fr in seq(1, 480)) {
-  frametibble <- rawdata |>
+  frametibble <- foreign |>
     filter(frame == fr)
   ggplot(frametibble, aes(fill = frametibble$Perc_change)) +
     geom_sf(data = frametibble$geometry, size = 1.5, color = "black") +
@@ -22,9 +23,24 @@ for (fr in seq(1, 480)) {
                  as.numeric(format(frametibble$Stichtag[1], "%Y")))) + 
   theme_minimal() + # Use a minimal theme instead of theme_void()
   theme(plot.background = element_rect(fill = "white"))
-  ggsave(filename = paste0("~/Desktop/R/Berlin-map-and-demographic/Population_density/big_files/video/plot", fr, ".png"), width = 10, height = 8, dpi = 300 , device = "png")
+  ggsave(filename = paste0("~/Desktop/R/Berlin-map-and-demographic/Population_density/big_files/video/plot",fr , ".png"), width = 10, height = 8, dpi = 300 , device = "png")
 }
 
+#German
+german <- readRDS("~/Desktop/R/Berlin-map-and-demographic/Population_density/big_files/german.rds")
+
+for (fr in seq(1, 480)) {
+  frametibble <- german |>
+    filter(frame == fr)
+  ggplot(frametibble, aes(fill = frametibble$Perc_change)) +
+    geom_sf(data = frametibble$geometry, size = 1.5, color = "black") +
+    scale_fill_gradientn( colors= c("#093454", "#e7470b"), limits = c(-5, 5)) +
+    labs(fill = "% change")+ #very easy way of changing legend names
+    ggtitle(paste0("Change (%) of German in Berlin Districts, year 2013-",
+                   as.numeric(format(frametibble$Stichtag[1], "%Y")))) + 
+    theme_minimal() + # Use a minimal theme instead of theme_void()
+    theme(plot.background = element_rect(fill = "white"))
+  ggsave(filename = paste0("~/Desktop/R/Berlin-map-and-demographic/Population_density/big_files/germanvideo/plot",fr , ".png"), width = 10, height = 8, dpi = 300 , device = "png")}
 
 
   

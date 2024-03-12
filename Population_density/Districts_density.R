@@ -7,6 +7,7 @@ pacman::p_load(ggplot2, dplyr, tibble,
 )
 conflicts_prefer(dplyr::filter)
 
+#Preprocess the Excell file
 rawdata <- read_xlsx("~/Desktop/R/Berlin-map-and-demographic/Berlindemographics.xlsx",
                       sheet = "T3 T4") |>
                      as_tibble()
@@ -21,103 +22,86 @@ colnames(rawdata) <-lapply(colnames(rawdata), function(x) gsub("-\r\n", "", x))
 colnames(rawdata) <-lapply(colnames(rawdata), function(x)  gsub("([a-z])([A-Z])", "\\1-\\2", x))
 
 #Creating Herkunft column
-herkunft_content <-rawdata[c(4, 17, 30), "Berlin"]
-rawdata[5:15, "Herkunft"] <- herkunft_content[1,]
-rawdata[18:28, "Herkunft"] <- herkunft_content[2,]
-rawdata[31:41, "Herkunft"] <- herkunft_content[3,]
+rawdata <- rawdata |>
+  mutate(Herkunft = ifelse(row_number() %in% 5:15, "Deutsche",
+                    ifelse(row_number() %in% 18:28, "Ausländer",
+                    ifelse(row_number() %in% 31:41, "insgesamt",''))))
 
-#Select only first table, change the formate of Stichstag and remove NAs lines
+
+#Selected only first table, changed the format of Stichstag and removed NAs lines
 rawdata <-rawdata |>
   slice(5:41) |>
   mutate(Stichtag = as.Date(as.numeric(Stichtag), origin = "1899-12-30")) |>
   mutate_at(vars(Berlin:Reinickendorf), as.numeric)|>
   filter(!is.na(Stichtag)) 
 
-
+#Read the shape file of each districts and add the area
 districts_sh <- st_read("~/Desktop/R/Berlin-map-and-demographic/Districts_shapes/bezirksgrenzen.shp") |>
   select(Gemeinde_n, geometry) |>
   mutate(area= as.numeric(st_area(geometry))/10**6)
 
 
+#Creation of a new tibble with the percentage increment of population for each districts through the years. Reference year= 2013
+############################
+#########FUNCTIONS##########
+############################
+create_gradient<- function(oldtibble,newtibble){
+  newtibble <- tibble()
+  for (el in seq_along(oldtibble$Berlin)){
+    if (el < length(oldtibble$Berlin)){
+      start_values <- oldtibble[el, numvar$names]
+      end_values <- oldtibble[el+1, numvar$names]
+      sequence <- mapply(seq, from = start_values, to = end_values, length.out = 49) |>
+        tail(-1) |> as_tibble() # to avoid first element repeated
+      newtibble <-bind_rows(newtibble, sequence)}}
+  newtibble$Stichtag<- rep(oldtibble$Stichtag[-1], each = 48)
+  return (newtibble)
+}
 
-# #Creation of one single row of a specific year of the total population for each districts
-# data <- rawdata |> filter( Stichtag=='2013-12-31' ,Herkunft=='insgesamt') |> select (-Berlin)
-# 
-# #Pivot longer to prepare the data to the join with the shapefile
-# data <- data |>
-#   pivot_longer(cols = -c(Stichtag, Herkunft), names_to = "District", values_to = "Population") 
-# 
-# data<- merge(data, districts_sh,
-#                   by.x = "District",
-#                   by.y = "Gemeinde_n", all = FALSE) 
-# 
-# 
-# population<- data$Population
-# 
-# ggplot(data, aes(fill=population/area)) + 
-#   geom_sf(data = districts_sh, size = 1.5, color = "black") +
-#   scale_fill_continuous()+
-#   ggtitle("Berlin Districts Population 2013") + 
-#   theme_void()
-
-
-aus<- rawdata |> filter(Herkunft=='Ausländer')
-numvar <- ColSeeker(varclass="numeric")
-
-#A function that calculates the percentage difference among two number, probably it already exists but I couldn't find it
 calc_perc <- function(reference, value) {
   round((value / reference - 1) * 100, digits = 1)
 }
 
-#Creation of a new tibble with the percentage increment of population for each districts thru the years. Reference year= 2013
 make_percentage <- function(oldtibble){
-newtibble<- tibble()
-reference <- oldtibble[1,numvar$names]
-for (i in seq_along(oldtibble[[1]])){
-  percentage <- calc_perc(reference=reference, oldtibble[i,numvar$names])
-  newtibble <- bind_rows(newtibble, percentage)
+  newtibble<- tibble()
+  reference <- oldtibble[1,numvar$names]
+  for (i in seq_along(oldtibble[[1]])){
+    percentage <- calc_perc(reference=reference, oldtibble[i,numvar$names])
+    newtibble <- bind_rows(newtibble, percentage)
+  }
+  newtibble$Stichtag <- oldtibble$Stichtag
+  return(newtibble)
 }
-newtibble$Stichtag <- oldtibble$Stichtag
-return(newtibble)
+
+save_pivot_longer<- function(tibble,folder){
+  tibble$frame<- seq(1,480)
+  newtibble <- tibble |>
+    select(-Berlin) |>
+    pivot_longer(cols = -c(Stichtag, frame), names_to='District', values_to = 'Perc_change') |>
+    left_join(districts_sh, by = c('District' = 'Gemeinde_n'))
+  saveRDS(newtibble, file = paste0("~/Desktop/R/Berlin-map-and-demographic/Population_density/big_files/",folder, ".rds"))
 }
 
-#ausper <- Ausländer percentage
-ausper<- make_percentage(aus)
+#Numeric values
+numvar <- ColSeeker(varclass="numeric")
 
-
-
-
-
-#Now it's time to create 24 fps for 2 seconds for each year  If I want to do a real smooth change: Idea, work with ranges (seq) on the the "aus" (Ausländer) tibble.
-longaus<- tibble()
-for (el in seq_along(aus$Berlin)){
-  if (el < length(aus$Berlin)){
-    start_values <- aus[el, numvar$names]
-    end_values <- aus[el+1, numvar$names]
-    sequence <- mapply(seq, from = start_values, to = end_values, length.out = 49) |>
-      tail(-1) |> as_tibble() # to avoid first element repeated
-    longaus <-bind_rows(longaus, sequence)
-    }}
-
-#Adding the elongated stichtag column
-longaus$Stichtag<- rep(aus$Stichtag[-1], each = 48)
-
-
-
+#For the Ausländer (foreign)
+aus<- rawdata |> filter(Herkunft=='Ausländer')
+longaus<- create_gradient(aus,longaus)
 longausper<- make_percentage(longaus)
-longausper$frame<- seq(1,480)
+save_pivot_longer(longaus, "foreign")
 
+#Then the Germans
+ger<- rawdata |> filter(Herkunft=='Deutsche')
+longger<- create_gradient(ger,longer)
+longgerper<- make_percentage(longger)
+save_pivot_longer(longgerper, "german")
 
-
-#Pivot longer to prepare the data to the join with the shapefile
-longausper <- longausper |> 
-  select(-Berlin) |>
-  pivot_longer(cols = -c(Stichtag, frame), names_to='District', values_to = 'Perc_change') |>
-  left_join(districts_sh, by = c('District' = 'Gemeinde_n'))
-
-#Saving the file for the data visualization
-saveRDS(longausper, file = "~/Desktop/R/Berlin-map-and-demographic/Population_density/big_files/longausper.rds")
-
+#And for the total population
+tot<- rawdata |> filter(Herkunft=='Insgesamt')
+longtot<- create_gradient(tot,longtot)
+longtotper<- make_percentage(longger)
+save_pivot_longer(longtotper, "total")
 
 
 
