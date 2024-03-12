@@ -89,7 +89,7 @@ numvar <- ColSeeker(varclass="numeric")
 aus<- rawdata |> filter(Herkunft=='Ausländer')
 longaus<- create_gradient(aus,longaus)
 longausper<- make_percentage(longaus)
-save_pivot_longer(longaus, "foreign")
+save_pivot_longer(longausper, "foreign")
 
 #Then the Germans
 ger<- rawdata |> filter(Herkunft=='Deutsche')
@@ -98,9 +98,10 @@ longgerper<- make_percentage(longger)
 save_pivot_longer(longgerper, "german")
 
 #And for the total population
+#This need to be fixed
 tot<- rawdata |> filter(Herkunft=='Insgesamt')
 longtot<- create_gradient(tot,longtot)
-longtotper<- make_percentage(longger)
+longtotper<- make_percentage(longtot)
 save_pivot_longer(longtotper, "total")
 
 
