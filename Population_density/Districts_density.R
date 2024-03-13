@@ -82,30 +82,38 @@ save_pivot_longer<- function(tibble,folder){
   saveRDS(newtibble, file = paste0("~/Desktop/R/Berlin-map-and-demographic/Population_density/big_files/",folder, ".rds"))
 }
 
+
+
+
 #Numeric values
 numvar <- ColSeeker(varclass="numeric")
 
-#For the Ausländer (foreign)
+# #For the Ausländer (foreign)
 aus<- rawdata |> filter(Herkunft=='Ausländer')
 longaus<- create_gradient(aus,longaus)
 longausper<- make_percentage(longaus)
 save_pivot_longer(longausper, "foreign")
 
-#Then the Germans
+# #Then the Germans
 ger<- rawdata |> filter(Herkunft=='Deutsche')
 longger<- create_gradient(ger,longer)
 longgerper<- make_percentage(longger)
 save_pivot_longer(longgerper, "german")
 
-#And for the total population
-#This need to be fixed
-tot<- rawdata |> filter(Herkunft=='Insgesamt')
+# #And for the total population
+tot<- rawdata |> filter(Herkunft=='insgesamt')
 longtot<- create_gradient(tot,longtot)
 longtotper<- make_percentage(longtot)
 save_pivot_longer(longtotper, "total")
 
+#Creation the tibble of the share of foreign for District
 
 
+
+share <- select(aus, -c(Stichtag,Herkunft)) / select(tot, -c(Stichtag,Herkunft)) *100
+share <- share|> mutate(Stichtag= aus$Stichtag, Herkunft="share")
+longsha<- create_gradient(share,longsha)
+save_pivot_longer(longsha, "share")
 
 
 
