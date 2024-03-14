@@ -36,7 +36,7 @@ rawdata <-rawdata |>
   filter(!is.na(Stichtag)) 
 
 #Read the shape file of each districts and add the area
-districts_sh <- st_read("~/Desktop/R/Berlin-map-and-demographic/Districts_shapes/bezirksgrenzen.shp") |>
+districts_sh <- st_read("~/Desktop/R/Berlin-map-and-demographic/Shapefiles/Districts_shapes/bezirksgrenzen.shp") |>
   select(Gemeinde_n, geometry) |>
   mutate(area= as.numeric(st_area(geometry))/10**6)
 
@@ -79,7 +79,7 @@ save_pivot_longer<- function(tibble,folder){
     select(-Berlin) |>
     pivot_longer(cols = -c(Stichtag, frame), names_to='District', values_to = 'Perc_change') |>
     left_join(districts_sh, by = c('District' = 'Gemeinde_n'))
-  saveRDS(newtibble, file = paste0("~/Desktop/R/Berlin-map-and-demographic/Population_density/big_files/",folder, ".rds"))
+  saveRDS(newtibble, file = paste0("~/Desktop/R/Berlin-map-and-demographic/big_files/",folder, ".rds"))
 }
 
 

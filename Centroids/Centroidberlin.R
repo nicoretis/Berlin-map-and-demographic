@@ -11,9 +11,9 @@ conflicts_prefer(dplyr::filter)
 rawdata <- read_excel("~/Desktop/R/Berlin-map-and-demographic/Berlindemographics.xlsx", sheet = "T14")|>
         as_tibble()
 
-orts_sh <- st_read("~/Desktop/R/Berlin-map-and-demographic/Ortsteilen_shapes/plz.shp") |> st_make_valid()
+orts_sh <- st_read("~/Desktop/R/Berlin-map-and-demographic/Shapefiles/Ortsteilen_shapes/plz.shp") |> st_make_valid()
 
-posten_sh <- st_read("~/Desktop/R/Berlin-map-and-demographic/Postal_shapes/plz.shp") |> st_make_valid()
+posten_sh <- st_read("~/Desktop/R/Berlin-map-and-demographic/Shapefiles/Postal_shapes/plz.shp") |> st_make_valid()
 
 
 #Assigning the right column name
