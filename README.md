@@ -9,3 +9,5 @@ This project focuses on visualizing the aging index of neighborhoods in Berlin. 
 
 ## Migration trend
 This repository contains a video heatmap illustrating migration trends in Berlin's districts from 2013 to 2023. The heatmap shows the influx and outflux of foreign nationals, German citizens, and the total population (foreign and German) over the specified timeframe. By visualizing these migration patterns, we gain insights into the changing demographics and migration dynamics within Berlin.
+
+Data source: [statistik-berlin-brandenburg.de](https://www.statistik-berlin-brandenburg.de)
